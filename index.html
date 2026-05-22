@@ -6,44 +6,44 @@
 
 <style>
 
-/* ===== BASE ===== */
+/* ================= BASE ================= */
 body {
     margin: 0;
     background: #111;
+    height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
-    height: 100vh;
+    align-items: center; /* ✅ centrado vertical */
 }
 
-/* ===== CONTENEDOR ===== */
+/* ================= CONTENEDOR ================= */
 #app {
     width: 100%;
     height: 100%;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
+    align-items: center; /* ✅ centrado real */
 }
 
-/* ===== LIBRO ===== */
+/* ================= LIBRO ================= */
 #libro {
-    width: 100%;
+    width: 90%;
     max-width: 900px;
     aspect-ratio: 1.54;
-    margin: auto;
     overflow: hidden;
-    position: relative;
 }
 
+/* ================= IMAGEN ================= */
 #pagina img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-/* ===== CONTROLES ===== */
+/* ================= UI ================= */
 #ui {
     position: fixed;
-    bottom: 15px;
+    bottom: 20px;
     width: 100%;
     text-align: center;
     transition: opacity 0.3s;
@@ -63,7 +63,7 @@ button {
     margin-top: 5px;
 }
 
-/* ocultar UI */
+/* oculto */
 .oculto {
     opacity: 0;
     pointer-events: none;
@@ -75,7 +75,7 @@ button {
 }
 
 @keyframes fadein {
-    from {opacity:0; transform:translateX(40px);}
+    from {opacity:0; transform:translateX(30px);}
     to {opacity:1; transform:translateX(0);}
 }
 
@@ -88,7 +88,7 @@ button {
 
     <div id="libro">
         <div id="pagina">
-            <img id="imgPagina" src="pages/01.png">
+            <img id="imgPagina">
         </div>
     </div>
 
@@ -106,45 +106,44 @@ button {
 
 <script>
 
-/* ======================= */
+/* CONFIG */
 const total = 116;
-/* ======================= */
 
+/* ESTADO */
 let pagina = localStorage.getItem("pagina")
     ? parseInt(localStorage.getItem("pagina"))
     : 1;
 
 let timerUI;
+let uiVisible = true;
+let interactoTouch = false;
 
-/* ======================= */
-
+/* FORMATO */
 function num(n){
     return n.toString().padStart(2,'0');
 }
 
-/* =======================
-   CONTROL UI
-======================= */
-
+/* UI */
 function ocultarUI(){
     document.getElementById("ui").classList.add("oculto");
+    uiVisible = false;
 }
 
 function mostrarUI(){
+
     let ui = document.getElementById("ui");
+
     ui.classList.remove("oculto");
+    uiVisible = true;
 
     clearTimeout(timerUI);
 
     timerUI = setTimeout(()=>{
-        ui.classList.add("oculto");
-    }, 2000);
+        ocultarUI();
+    }, 2500);
 }
 
-/* =======================
-   CARGAR PAGINA
-======================= */
-
+/* CARGA */
 function cargar(){
 
     let img = document.getElementById("imgPagina");
@@ -152,11 +151,9 @@ function cargar(){
     img.classList.remove("fade");
 
     setTimeout(()=>{
-
         img.src = `pages/${num(pagina)}.png`;
         img.classList.add("fade");
-
-    },50);
+    }, 50);
 
     document.getElementById("info").innerText =
         `Página ${pagina} de ${total}`;
@@ -164,10 +161,7 @@ function cargar(){
     localStorage.setItem("pagina", pagina);
 }
 
-/* =======================
-   NAVEGACIÓN
-======================= */
-
+/* NAVEGACION */
 function siguiente(){
     if(pagina < total){
         pagina++;
@@ -192,72 +186,89 @@ function final(){
     cargar();
 }
 
-/* =======================
-   TECLADO
-======================= */
-
+/* TECLADO */
 document.addEventListener("keydown", e=>{
     if(e.key==="ArrowRight") siguiente();
     if(e.key==="ArrowLeft") anterior();
 });
 
-/* =======================
-   TÁCTIL
-======================= */
-
+/* TOUCH */
 let startX = 0;
+let startY = 0;
+let multiTouch = false;
 
 document.addEventListener("touchstart", e=>{
+
+    interactoTouch = true;
+
+    if(e.touches.length > 1){
+        multiTouch = true;
+        return;
+    }
+
+    multiTouch = false;
+
     startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+
     ocultarUI();
 });
 
 document.addEventListener("touchend", e=>{
+
+    if (multiTouch) return;
+
     let endX = e.changedTouches[0].clientX;
+    let endY = e.changedTouches[0].clientY;
 
-    if(endX < startX - 50) siguiente();
-    if(endX > startX + 50) anterior();
+    let diffX = endX - startX;
+    let diffY = endY - startY;
 
-    mostrarUI();
+    let limite = 100;
+
+    if(Math.abs(diffX) > limite && Math.abs(diffX) > Math.abs(diffY)){
+        if(diffX < 0) siguiente();
+        else anterior();
+    }
 });
 
-/* =======================
-   CLICK MOSTRAR UI
-======================= */
-
+/* CLICK PC (IMPORTANTE 🔥) */
 document.addEventListener("click", ()=>{
-    mostrarUI();
+    if(!interactoTouch){
+        mostrarUI();
+    }
+    interactoTouch = false;
 });
 
-/* =======================
-   PANTALLA COMPLETA
-======================= */
-
+/* FULLSCREEN */
 function pantallaCompleta(){
 
     let elem = document.documentElement;
 
     if(!document.fullscreenElement){
         elem.requestFullscreen();
+        ocultarUI();
     } else {
         document.exitFullscreen();
+        mostrarUI();
     }
 }
 
-/* =======================
-   ROTACIÓN LIMPIA
-======================= */
-
-window.addEventListener("orientationchange", ()=>{
-    setTimeout(()=>{ window.scrollTo(0,1); },100);
+/* SALIR FULLSCREEN DETECTADO */
+document.addEventListener("fullscreenchange", ()=>{
+    if(!document.fullscreenElement){
+        mostrarUI();
+    }
 });
 
-/* ======================= */
+/* RESIZE */
+window.addEventListener("resize", ()=>{
+    mostrarUI(); // ✅ evita que desaparezcan en PC
+});
 
+/* INIT */
 cargar();
 mostrarUI();
-
-/* ======================= */
 
 </script>
 
